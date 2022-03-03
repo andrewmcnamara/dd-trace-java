@@ -387,7 +387,7 @@ public class CoreTracer implements AgentTracer.TracerAPI {
     assert serviceNameMappings != null;
     assert taggedHeaders != null;
 
-    checkpointer = SamplingCheckpointer.create();
+    this.checkpointer = SamplingCheckpointer.create();
     this.serviceName = serviceName;
     this.sampler = sampler;
     this.injector = injector;
@@ -410,15 +410,15 @@ public class CoreTracer implements AgentTracer.TracerAPI {
       this.statsDClient = StatsDClient.NO_OP;
     }
 
-    monitoring =
+    this.monitoring =
         config.isHealthMetricsEnabled()
             ? new MonitoringImpl(this.statsDClient, 10, TimeUnit.SECONDS)
             : Monitoring.DISABLED;
-    performanceMonitoring =
+    this.performanceMonitoring =
         config.isPerfMetricsEnabled()
             ? new MonitoringImpl(this.statsDClient, 10, TimeUnit.SECONDS)
             : Monitoring.DISABLED;
-    traceWriteTimer = performanceMonitoring.newThreadLocalTimer("trace.write");
+    this.traceWriteTimer = performanceMonitoring.newThreadLocalTimer("trace.write");
     if (scopeManager == null) {
       ContinuableScopeManager csm =
           new ContinuableScopeManager(
@@ -432,10 +432,10 @@ public class CoreTracer implements AgentTracer.TracerAPI {
       this.scopeManager = scopeManager;
     }
 
-    externalAgentLauncher = new ExternalAgentLauncher(config);
+    this.externalAgentLauncher = new ExternalAgentLauncher(config);
 
-    disableSamplingMechanismValidation = config.isSamplingMechanismValidationDisabled();
-    datadogTagsLimit = config.getDatadogTagsLimit();
+    this.disableSamplingMechanismValidation = config.isSamplingMechanismValidationDisabled();
+    this.datadogTagsLimit = config.getDatadogTagsLimit();
 
     if (sharedCommunicationObjects == null) {
       sharedCommunicationObjects = new SharedCommunicationObjects();
@@ -451,7 +451,7 @@ public class CoreTracer implements AgentTracer.TracerAPI {
       this.writer = writer;
     }
 
-    pendingTraceBuffer =
+    this.pendingTraceBuffer =
         strictTraceWrites ? PendingTraceBuffer.discarding() : PendingTraceBuffer.delaying();
     pendingTraceFactory = new PendingTrace.Factory(this, pendingTraceBuffer, strictTraceWrites);
     pendingTraceBuffer.start();
@@ -747,6 +747,7 @@ public class CoreTracer implements AgentTracer.TracerAPI {
     }
   }
 
+  @SuppressWarnings("unchecked")
   void setSamplingPriorityIfNecessary(final DDSpan rootSpan) {
     // There's a race where multiple threads can see PrioritySampling.UNSET here
     // This check skips potential complex sampling priority logic when we know its redundant
@@ -957,7 +958,7 @@ public class CoreTracer implements AgentTracer.TracerAPI {
 
     @Override
     public AgentTracer.SpanBuilder suppressCheckpoints() {
-      emitCheckpoints = false;
+      this.emitCheckpoints = false;
       return this;
     }
 
