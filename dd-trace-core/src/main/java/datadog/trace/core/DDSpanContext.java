@@ -1,7 +1,5 @@
 package datadog.trace.core;
 
-import static datadog.trace.api.cache.RadixTreeCache.HTTP_STATUSES;
-
 import datadog.trace.api.DDId;
 import datadog.trace.api.DDTags;
 import datadog.trace.api.Functions;
@@ -18,14 +16,16 @@ import datadog.trace.bootstrap.instrumentation.api.Tags;
 import datadog.trace.bootstrap.instrumentation.api.UTF8BytesString;
 import datadog.trace.core.propagation.DatadogTags;
 import datadog.trace.core.taginterceptor.TagInterceptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * SpanContext represents Span state that must propagate to descendant Spans and across process
@@ -46,10 +46,14 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
 
   private static final Map<String, String> EMPTY_BAGGAGE = Collections.emptyMap();
 
-  /** The collection of all span related to this one */
+  /**
+   * The collection of all span related to this one
+   */
   private final PendingTrace trace;
 
-  /** Baggage is associated with the whole trace and shared with other spans */
+  /**
+   * Baggage is associated with the whole trace and shared with other spans
+   */
   private volatile Map<String, String> baggageItems;
 
   // Not Shared with other span contexts
@@ -75,17 +79,27 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
    */
   private final Map<String, Object> unsafeTags;
 
-  /** The service name is required, otherwise the span are dropped by the agent */
+  /**
+   * The service name is required, otherwise the span are dropped by the agent
+   */
   private volatile String serviceName;
-  /** The resource associated to the service (server_web, database, etc.) */
+  /**
+   * The resource associated to the service (server_web, database, etc.)
+   */
   private volatile CharSequence resourceName;
 
   private volatile byte resourceNamePriority = ResourceNamePriorities.DEFAULT;
-  /** Each span have an operation name describing the current span */
+  /**
+   * Each span have an operation name describing the current span
+   */
   private volatile CharSequence operationName;
-  /** The type of the span. If null, the Datadog Agent will report as a custom */
+  /**
+   * The type of the span. If null, the Datadog Agent will report as a custom
+   */
   private volatile CharSequence spanType;
-  /** True indicates that the span reports an error */
+  /**
+   * True indicates that the span reports an error
+   */
   private volatile boolean errorFlag;
 
   private volatile boolean measured;
@@ -97,10 +111,14 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
 
   private volatile int samplingDecision = SamplingDecision.UNSET_UNKNOWN;
 
-  /** The origin of the trace. (eg. Synthetics, CI App) */
+  /**
+   * The origin of the trace. (eg. Synthetics, CI App)
+   */
   private volatile CharSequence origin;
 
-  /** RequestContext data for the InstrumentationGateway */
+  /**
+   * RequestContext data for the InstrumentationGateway
+   */
   private final Object requestContextData;
 
   private final boolean disableSamplingMechanismValidation;
@@ -108,7 +126,9 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
   private final int datadogTagsLimit;
   private final DatadogTags ddTags;
 
-  /** Aims to pack sampling priority and sampling mechanism into one value */
+  /**
+   * Aims to pack sampling priority and sampling mechanism into one value
+   */
   protected static class SamplingDecision {
 
     public static final int UNSET_UNKNOWN =
@@ -126,7 +146,8 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
       return (byte) samplingDecision;
     }
 
-    private SamplingDecision() {}
+    private SamplingDecision() {
+    }
   }
 
   public DDSpanContext(
@@ -172,7 +193,7 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
     // The +1 is the magic number from the tags below that we set at the end,
     // and "* 4 / 3" is to make sure that we don't resize immediately
     final int capacity = Math.max((tagsSize <= 0 ? 3 : (tagsSize + 1)) * 4 / 3, 8);
-    this.unsafeTags = new HashMap<>(capacity);
+    unsafeTags = new HashMap<>(capacity);
 
     this.ddTags = ddTags == null ? DatadogTags.empty() : ddTags;
 
@@ -185,8 +206,8 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
 
     // Additional Metadata
     final Thread current = Thread.currentThread();
-    this.threadId = current.getId();
-    this.threadName = THREAD_NAMES.computeIfAbsent(current.getName(), Functions.UTF8_ENCODE);
+    threadId = current.getId();
+    threadName = THREAD_NAMES.computeIfAbsent(current.getName(), Functions.UTF8_ENCODE);
 
     this.disableSamplingMechanismValidation = disableSamplingMechanismValidation;
     this.datadogTagsLimit = datadogTagsLimit;
@@ -215,7 +236,7 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
 
   public void setServiceName(final String serviceName) {
     this.serviceName = trace.getTracer().mapServiceName(serviceName);
-    this.topLevel = isTopLevel(parentServiceName, this.serviceName);
+    topLevel = isTopLevel(parentServiceName, this.serviceName);
   }
 
   // TODO this logic is inconsistent with hasResourceName
@@ -232,8 +253,8 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
   }
 
   public void setResourceName(final CharSequence resourceName, byte priority) {
-    if (priority >= this.resourceNamePriority) {
-      this.resourceNamePriority = priority;
+    if (priority >= resourceNamePriority) {
+      resourceNamePriority = priority;
       this.resourceName = resourceName;
     }
   }
@@ -303,7 +324,9 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
     SAMPLING_DECISION_UPDATER.set(this, newSamplingPriorityAndMechanism);
   }
 
-  /** @return if sampling priority was set by this method invocation */
+  /**
+   * @return if sampling priority was set by this method invocation
+   */
   public boolean setSamplingPriority(final int newPriority, final int newMechanism) {
     return setSamplingPriority(newPriority, newMechanism, -1.0);
   }
@@ -359,7 +382,9 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
     return true;
   }
 
-  /** @return the sampling priority of this span's trace, or null if no priority has been set */
+  /**
+   * @return the sampling priority of this span's trace, or null if no priority has been set
+   */
   public int getSamplingPriority() {
     final DDSpan rootSpan = trace.getRootSpan();
     if (null != rootSpan && rootSpan.context() != this) {
@@ -446,7 +471,7 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
   }
 
   public void setHttpStatusCode(short statusCode) {
-    this.httpStatusCode = statusCode;
+    httpStatusCode = statusCode;
   }
 
   public short getHttpStatusCode() {
@@ -466,7 +491,7 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
   /**
    * Add a tag to the span. Tags are not propagated to the children
    *
-   * @param tag the tag-name
+   * @param tag   the tag-name
    * @param value the value of the tag. tags with null values are ignored.
    */
   public void setTag(final String tag, final Object value) {
@@ -493,6 +518,35 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
           unsafeSetTag(tag.getKey(), tag.getValue());
         }
       }
+    }
+  }
+
+  void setAllTags(final TagLog log) {
+    if (log == null || log.isEmpty()) {
+      return;
+    }
+
+    TagInterceptor tagInterceptor = trace.getTracer().getTagInterceptor();
+    synchronized (unsafeTags) {
+      if (log.mayHaveDuplicates) {
+        // Todo: improve slow path
+        LinkedHashMap<String, Object> map = new LinkedHashMap<>();
+        for (int i = 0; i < log.changeOffset; i += 2) {
+          map.put((String) log.changes[i], log.changes[i + 1]);
+        }
+        for (final Map.Entry<String, ?> tag : map.entrySet()) {
+          if (!tagInterceptor.interceptTag(this, tag.getKey(), tag.getValue())) {
+            unsafeSetTag(tag.getKey(), tag.getValue());
+          }
+        }
+      } else {
+        for (int i = 0; i < log.changeOffset; i += 2) {
+          if (!tagInterceptor.interceptTag(this, (String) log.changes[i], log.changes[i + 1])) {
+            unsafeSetTag((String) log.changes[i], log.changes[i + 1]);
+          }
+        }
+      }
+
     }
   }
 
@@ -567,7 +621,7 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
               topLevel,
               httpStatusCode == 0 ? null : HTTP_STATUSES.get(httpStatusCode),
               getOrigin() // Get origin from rootSpan.context
-              ));
+          ));
     }
   }
 
@@ -606,7 +660,9 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
     return s.toString();
   }
 
-  /** RequestContext Implementation */
+  /**
+   * RequestContext Implementation
+   */
   @Override
   public Object getData() {
     return requestContextData;
@@ -617,7 +673,9 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
     return this;
   }
 
-  /** TraceSegment Implementation */
+  /**
+   * TraceSegment Implementation
+   */
   @Override
   public void setTagTop(String key, Object value) {
     getTopContext().setTagCurrent(key, value);
@@ -625,7 +683,7 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
 
   @Override
   public void setTagCurrent(String key, Object value) {
-    this.setTag(key, value);
+    setTag(key, value);
   }
 
   @Override
@@ -637,7 +695,7 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
   public void setDataCurrent(String key, Object value) {
     // TODO is this decided?
     String tagKey = "_dd." + key + ".json";
-    this.setTag(tagKey, value);
+    setTag(tagKey, value);
   }
 
   private DDSpanContext getTopContext() {
