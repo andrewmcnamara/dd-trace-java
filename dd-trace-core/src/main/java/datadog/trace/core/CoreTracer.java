@@ -1,5 +1,11 @@
 package datadog.trace.core;
 
+import static datadog.communication.monitor.DDAgentStatsDClientManager.statsDClientManager;
+import static datadog.trace.api.ConfigDefaults.DEFAULT_ASYNC_PROPAGATING;
+import static datadog.trace.common.metrics.MetricsAggregatorFactory.createMetricsAggregator;
+import static datadog.trace.util.AgentThreadFactory.AGENT_THREAD_GROUP;
+import static datadog.trace.util.CollectionUtils.tryMakeImmutableMap;
+
 import datadog.communication.ddagent.ExternalAgentLauncher;
 import datadog.communication.ddagent.SharedCommunicationObjects;
 import datadog.communication.monitor.Monitoring;
@@ -41,9 +47,6 @@ import datadog.trace.core.scopemanager.ContinuableScopeManager;
 import datadog.trace.core.taginterceptor.RuleFlags;
 import datadog.trace.core.taginterceptor.TagInterceptor;
 import datadog.trace.util.AgentTaskScheduler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
@@ -59,12 +62,8 @@ import java.util.ServiceLoader;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.TimeUnit;
-
-import static datadog.communication.monitor.DDAgentStatsDClientManager.statsDClientManager;
-import static datadog.trace.api.ConfigDefaults.DEFAULT_ASYNC_PROPAGATING;
-import static datadog.trace.common.metrics.MetricsAggregatorFactory.createMetricsAggregator;
-import static datadog.trace.util.AgentThreadFactory.AGENT_THREAD_GROUP;
-import static datadog.trace.util.CollectionUtils.tryMakeImmutableMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Main entrypoint into the tracer implementation. In addition to implementing
@@ -89,41 +88,25 @@ public class CoreTracer implements AgentTracer.TracerAPI {
 
   private final PendingTraceBuffer pendingTraceBuffer;
 
-  /**
-   * Default service name if none provided on the trace or span
-   */
+  /** Default service name if none provided on the trace or span */
   final String serviceName;
-  /**
-   * Writer is an charge of reporting traces and spans to the desired endpoint
-   */
+  /** Writer is an charge of reporting traces and spans to the desired endpoint */
   final Writer writer;
-  /**
-   * Sampler defines the sampling policy in order to reduce the number of traces for instance
-   */
+  /** Sampler defines the sampling policy in order to reduce the number of traces for instance */
   final Sampler<DDSpan> sampler;
-  /**
-   * Scope manager is in charge of managing the scopes from which spans are created
-   */
+  /** Scope manager is in charge of managing the scopes from which spans are created */
   final AgentScopeManager scopeManager;
 
   final MetricsAggregator metricsAggregator;
 
-  /**
-   * A set of tags that are added only to the application's root span
-   */
+  /** A set of tags that are added only to the application's root span */
   private final Map<String, ?> localRootSpanTags;
-  /**
-   * A set of tags that are added to every span
-   */
+  /** A set of tags that are added to every span */
   private final Map<String, ?> defaultSpanTags;
-  /**
-   * A configured mapping of service names to update with new values
-   */
+  /** A configured mapping of service names to update with new values */
   private final Map<String, String> serviceNameMappings;
 
-  /**
-   * number of spans in a pending trace before they get flushed
-   */
+  /** number of spans in a pending trace before they get flushed */
   private final int partialFlushMinSpans;
 
   private final StatsDClient statsDClient;
@@ -887,9 +870,7 @@ public class CoreTracer implements AgentTracer.TracerAPI {
     return tagPrefix + ":" + tagValue;
   }
 
-  /**
-   * Spans are built using this builder
-   */
+  /** Spans are built using this builder */
   public class CoreSpanBuilder implements AgentTracer.SpanBuilder {
     private final CharSequence operationName;
     private final CoreTracer tracer;

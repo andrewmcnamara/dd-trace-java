@@ -1,5 +1,7 @@
 package datadog.trace.core;
 
+import static datadog.trace.api.cache.RadixTreeCache.HTTP_STATUSES;
+
 import datadog.trace.api.DDId;
 import datadog.trace.api.DDTags;
 import datadog.trace.api.Functions;
@@ -16,9 +18,6 @@ import datadog.trace.bootstrap.instrumentation.api.Tags;
 import datadog.trace.bootstrap.instrumentation.api.UTF8BytesString;
 import datadog.trace.core.propagation.DatadogTags;
 import datadog.trace.core.taginterceptor.TagInterceptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -26,6 +25,8 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * SpanContext represents Span state that must propagate to descendant Spans and across process
@@ -46,14 +47,10 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
 
   private static final Map<String, String> EMPTY_BAGGAGE = Collections.emptyMap();
 
-  /**
-   * The collection of all span related to this one
-   */
+  /** The collection of all span related to this one */
   private final PendingTrace trace;
 
-  /**
-   * Baggage is associated with the whole trace and shared with other spans
-   */
+  /** Baggage is associated with the whole trace and shared with other spans */
   private volatile Map<String, String> baggageItems;
 
   // Not Shared with other span contexts
@@ -79,27 +76,17 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
    */
   private final Map<String, Object> unsafeTags;
 
-  /**
-   * The service name is required, otherwise the span are dropped by the agent
-   */
+  /** The service name is required, otherwise the span are dropped by the agent */
   private volatile String serviceName;
-  /**
-   * The resource associated to the service (server_web, database, etc.)
-   */
+  /** The resource associated to the service (server_web, database, etc.) */
   private volatile CharSequence resourceName;
 
   private volatile byte resourceNamePriority = ResourceNamePriorities.DEFAULT;
-  /**
-   * Each span have an operation name describing the current span
-   */
+  /** Each span have an operation name describing the current span */
   private volatile CharSequence operationName;
-  /**
-   * The type of the span. If null, the Datadog Agent will report as a custom
-   */
+  /** The type of the span. If null, the Datadog Agent will report as a custom */
   private volatile CharSequence spanType;
-  /**
-   * True indicates that the span reports an error
-   */
+  /** True indicates that the span reports an error */
   private volatile boolean errorFlag;
 
   private volatile boolean measured;
@@ -111,14 +98,10 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
 
   private volatile int samplingDecision = SamplingDecision.UNSET_UNKNOWN;
 
-  /**
-   * The origin of the trace. (eg. Synthetics, CI App)
-   */
+  /** The origin of the trace. (eg. Synthetics, CI App) */
   private volatile CharSequence origin;
 
-  /**
-   * RequestContext data for the InstrumentationGateway
-   */
+  /** RequestContext data for the InstrumentationGateway */
   private final Object requestContextData;
 
   private final boolean disableSamplingMechanismValidation;
@@ -126,9 +109,7 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
   private final int datadogTagsLimit;
   private final DatadogTags ddTags;
 
-  /**
-   * Aims to pack sampling priority and sampling mechanism into one value
-   */
+  /** Aims to pack sampling priority and sampling mechanism into one value */
   protected static class SamplingDecision {
 
     public static final int UNSET_UNKNOWN =
@@ -146,8 +127,7 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
       return (byte) samplingDecision;
     }
 
-    private SamplingDecision() {
-    }
+    private SamplingDecision() {}
   }
 
   public DDSpanContext(
@@ -324,9 +304,7 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
     SAMPLING_DECISION_UPDATER.set(this, newSamplingPriorityAndMechanism);
   }
 
-  /**
-   * @return if sampling priority was set by this method invocation
-   */
+  /** @return if sampling priority was set by this method invocation */
   public boolean setSamplingPriority(final int newPriority, final int newMechanism) {
     return setSamplingPriority(newPriority, newMechanism, -1.0);
   }
@@ -382,9 +360,7 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
     return true;
   }
 
-  /**
-   * @return the sampling priority of this span's trace, or null if no priority has been set
-   */
+  /** @return the sampling priority of this span's trace, or null if no priority has been set */
   public int getSamplingPriority() {
     final DDSpan rootSpan = trace.getRootSpan();
     if (null != rootSpan && rootSpan.context() != this) {
@@ -491,7 +467,7 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
   /**
    * Add a tag to the span. Tags are not propagated to the children
    *
-   * @param tag   the tag-name
+   * @param tag the tag-name
    * @param value the value of the tag. tags with null values are ignored.
    */
   public void setTag(final String tag, final Object value) {
@@ -546,7 +522,6 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
           }
         }
       }
-
     }
   }
 
@@ -621,7 +596,7 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
               topLevel,
               httpStatusCode == 0 ? null : HTTP_STATUSES.get(httpStatusCode),
               getOrigin() // Get origin from rootSpan.context
-          ));
+              ));
     }
   }
 
@@ -660,9 +635,7 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
     return s.toString();
   }
 
-  /**
-   * RequestContext Implementation
-   */
+  /** RequestContext Implementation */
   @Override
   public Object getData() {
     return requestContextData;
@@ -673,9 +646,7 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
     return this;
   }
 
-  /**
-   * TraceSegment Implementation
-   */
+  /** TraceSegment Implementation */
   @Override
   public void setTagTop(String key, Object value) {
     getTopContext().setTagCurrent(key, value);

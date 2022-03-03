@@ -48,10 +48,10 @@ public final class TagLog {
     long keyFilter = this.keyFilter;
     long keyHash = hash(key);
 
-//    System.out.println(key);
-//    System.out.println(keyFilter);
-//    System.out.println(keyHash);
-//    System.out.println(keyFilter & keyHash);
+    //    System.out.println(key);
+    //    System.out.println(keyFilter);
+    //    System.out.println(keyHash);
+    //    System.out.println(keyFilter & keyHash);
 
     boolean mayAlreadyBePresent = ((keyFilter & keyHash) == keyHash);
     if (mayAlreadyBePresent) {
@@ -86,7 +86,9 @@ public final class TagLog {
       return;
     }
     int maxChangeOffset = changeOffset;
-    for (int changeOffset = 0; changeOffset < Math.min(maxChangeOffset, changes.length); changeOffset += 2) {
+    for (int changeOffset = 0;
+        changeOffset < Math.min(maxChangeOffset, changes.length);
+        changeOffset += 2) {
       if (key.equals(changes[changeOffset])) {
         changes[changeOffset] = null;
         changes[changeOffset + 1] = null;
@@ -117,7 +119,6 @@ public final class TagLog {
     }
   }
 
-
   public final TagLog copy() {
     return new TagLog(this);
   }
@@ -127,12 +128,15 @@ public final class TagLog {
       return EMPTY_HASH;
     } else {
       // A not great way to construct a 64-bit from an arbitrary string cheaply
-      // The benefit of this approach is the String.hashCode() is intrinsified & charAt operations are fast
+      // The benefit of this approach is the String.hashCode() is intrinsified & charAt operations
+      // are fast
       // The primary aim of this hashing scheme is just make sure the bloom filter doesn't
       // routinely create false positives.
       // That allows us to use the fast path during writing later.
       // If a key collision has occurred then we're force to use the slow path instead.
-      return (long) (13 * str.charAt(0) << 32) + (long) str.charAt(str.length() - 1) << 16 + str.hashCode() ^ 7 * str.length();
+      return (long) (13 * str.charAt(0) << 32) + (long) str.charAt(str.length() - 1)
+              << 16 + str.hashCode()
+          ^ 7 * str.length();
     }
   }
 }
