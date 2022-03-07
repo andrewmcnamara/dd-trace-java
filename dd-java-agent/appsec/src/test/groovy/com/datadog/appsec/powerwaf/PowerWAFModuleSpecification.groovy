@@ -2,6 +2,7 @@ package com.datadog.appsec.powerwaf
 
 import com.datadog.appsec.AppSecModule
 import com.datadog.appsec.config.AppSecConfig
+import com.datadog.appsec.config.TraceSegmentPostProcessor
 import com.datadog.appsec.event.ChangeableFlow
 import com.datadog.appsec.event.DataListener
 import com.datadog.appsec.event.EventListener
@@ -15,6 +16,7 @@ import com.datadog.appsec.report.raw.events.AppSecEvent100
 import com.datadog.appsec.report.raw.events.Parameter
 import com.datadog.appsec.report.raw.events.Tags
 import com.datadog.appsec.test.StubAppSecConfigService
+import datadog.trace.api.TraceSegment
 import datadog.trace.test.util.DDSpecification
 import io.sqreen.powerwaf.Powerwaf
 
@@ -24,6 +26,7 @@ class PowerWAFModuleSpecification extends DDSpecification {
 
   AppSecRequestContext ctx = Mock()
 
+  StubAppSecConfigService service
   PowerWAFModule pwafModule = new PowerWAFModule()
   DataListener dataListener
   EventListener eventListener
@@ -31,7 +34,7 @@ class PowerWAFModuleSpecification extends DDSpecification {
   def pwafAdditive
 
   private void setupWithStubConfigService() {
-    def service = new StubAppSecConfigService()
+    service = new StubAppSecConfigService()
     service.init(false)
     pwafModule.config(service)
     dataListener = pwafModule.dataSubscriptions.first()
@@ -41,6 +44,31 @@ class PowerWAFModuleSpecification extends DDSpecification {
   void 'is named powerwaf'() {
     expect:
     pwafModule.name == 'powerwaf'
+  }
+
+  void 'report waf stats on first span'() {
+    setup:
+    TraceSegment segment = Mock()
+    TraceSegmentPostProcessor pp
+
+    when:
+    setupWithStubConfigService()
+    pp = service.traceSegmentPostProcessors.first()
+    pp.processTraceSegment(segment, [])
+
+    then:
+    1 * segment.setTagTop('dd.appsec.event_rules.loaded', 114)
+    1 * segment.setTagTop('dd.appsec.event_rules.error_count', 1)
+    1 * segment.setTagTop('_dd.appsec.event_rules.version', '0.42.0')
+    1 * segment.setTagTop('_dd.appsec.event_rules.errors', { it =~ /\{"[^"]+":\["bad rule"\]\}/})
+    1 * segment.setTagTop('manual.keep', true)
+    0 * segment._(*_)
+
+    when:
+    pp.processTraceSegment(segment, [])
+
+    then:
+    0 * segment._(*_)
   }
 
   void 'triggers a rule through the user agent header'() {
@@ -229,7 +257,7 @@ class PowerWAFModuleSpecification extends DDSpecification {
     Collection ret
 
     when:
-    ret = waf.buildEvents(actionWithData)
+    ret = waf.buildEvents(actionWithData, [:])
 
     then:
     ret.isEmpty()
@@ -241,7 +269,7 @@ class PowerWAFModuleSpecification extends DDSpecification {
     Collection ret
 
     when:
-    ret = waf.buildEvents(actionWithData)
+    ret = waf.buildEvents(actionWithData, [:])
 
     then:
     ret.isEmpty()

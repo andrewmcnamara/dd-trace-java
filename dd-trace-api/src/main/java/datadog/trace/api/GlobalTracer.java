@@ -31,11 +31,6 @@ public class GlobalTracer {
 
         @Override
         public void addScopeListener(ScopeListener listener) {}
-
-        @Override
-        public UserDetails addUserDetails(String userId) {
-          return NoopUserDetails.INSTANCE;
-        }
       };
 
   private static final Collection<Callback> installationCallbacks = new ArrayList<>();

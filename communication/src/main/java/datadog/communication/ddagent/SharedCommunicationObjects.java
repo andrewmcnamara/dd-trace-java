@@ -5,6 +5,8 @@ import datadog.communication.http.OkHttpUtils;
 import datadog.communication.monitor.Monitoring;
 import datadog.trace.api.Config;
 import java.util.concurrent.TimeUnit;
+
+import datadog.trace.api.StatsDClient;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 
@@ -13,10 +15,14 @@ public class SharedCommunicationObjects {
   public HttpUrl agentUrl;
   public Monitoring monitoring;
   public DDAgentFeaturesDiscovery featuresDiscovery;
+  public StatsDClient statsDClient;
 
   public void createRemaining(Config config) {
     if (monitoring == null) {
       monitoring = Monitoring.DISABLED;
+    }
+    if (statsDClient == null) {
+      statsDClient = StatsDClient.NO_OP;
     }
     if (agentUrl == null) {
       agentUrl = HttpUrl.parse(config.getAgentUrl());

@@ -10,6 +10,7 @@ import datadog.communication.ddagent.SharedCommunicationObjects;
 import datadog.communication.monitor.Monitoring;
 import datadog.trace.api.TraceSegment;
 import datadog.trace.api.gateway.*;
+import datadog.trace.bootstrap.instrumentation.api.AgentTracer;
 import datadog.trace.bootstrap.instrumentation.api.URIDataAdapter;
 import datadog.trace.bootstrap.instrumentation.api.URIDefaultDataAdapter;
 import java.io.IOException;
@@ -60,7 +61,7 @@ public class AppSecBenchmark {
     sharedCommunicationObjects.featuresDiscovery =
         new StubDDAgentFeaturesDiscovery(sharedCommunicationObjects.okHttpClient);
 
-    AppSecSystem.start(gw, sharedCommunicationObjects);
+    AppSecSystem.start(gw, sharedCommunicationObjects, AgentTracer.NOOP_TRACER);
     uri = new URIDefaultDataAdapter(new URI("http://localhost:8080/test"));
   }
 

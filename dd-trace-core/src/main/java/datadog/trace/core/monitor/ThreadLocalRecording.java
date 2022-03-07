@@ -26,6 +26,11 @@ public class ThreadLocalRecording extends Recording {
   }
 
   @Override
+  public void addMeasurement(long durationInNanos) {
+    tls.get().addMeasurement(durationInNanos);
+  }
+
+  @Override
   public void flush() {
     tls.get().flush();
   }

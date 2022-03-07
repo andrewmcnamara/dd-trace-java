@@ -8,14 +8,21 @@ import com.squareup.moshi.JsonAdapter;
 import com.squareup.moshi.Moshi;
 import com.squareup.moshi.Types;
 import datadog.communication.fleet.FleetService;
+import datadog.communication.monitor.Monitoring;
 import datadog.trace.api.Config;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+
+import datadog.trace.api.GlobalTracer;
+import datadog.trace.api.StatsDClient;
+import datadog.trace.api.Tracer;
+import datadog.trace.api.interceptor.TraceInterceptor;
 import okio.BufferedSource;
 import okio.Okio;
 import org.slf4j.Logger;
@@ -38,11 +45,14 @@ public class AppSecConfigServiceImpl implements AppSecConfigService {
   private final ConcurrentHashMap<String, SubconfigListener> subconfigListeners =
       new ConcurrentHashMap<>();
   private final Config tracerConfig;
+  private final StatsDClient statsDClient;
+  private final List<TraceSegmentPostProcessor> traceSegmentPostProcessors = new ArrayList<>();
   private volatile FleetService.FleetSubscription fleetSubscription;
 
-  public AppSecConfigServiceImpl(Config tracerConfig, FleetService fleetService) {
+  public AppSecConfigServiceImpl(Config tracerConfig, FleetService fleetService, StatsDClient statsDClient) {
     this.tracerConfig = tracerConfig;
     this.fleetService = fleetService;
+    this.statsDClient = statsDClient;
   }
 
   private void subscribeFleetService(FleetService fleetService) {
@@ -104,6 +114,20 @@ public class AppSecConfigServiceImpl implements AppSecConfigService {
     this.subconfigListeners.put(key, listener);
     Map<String, AppSecConfig> lastConfig = this.lastConfig.get();
     return Optional.ofNullable(lastConfig.get(key));
+  }
+
+  @Override
+  public StatsDClient getStatsDClient() {
+    return this.statsDClient;
+  }
+
+  @Override
+  public void addTraceSegmentPostProcessor(TraceSegmentPostProcessor interceptor) {
+    this.traceSegmentPostProcessors.add(interceptor);
+  }
+
+  public List<TraceSegmentPostProcessor> getTraceSegmentPostProcessors() {
+    return traceSegmentPostProcessors;
   }
 
   private static Map<String, AppSecConfig> deserializeConfig(BufferedSource src)

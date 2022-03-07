@@ -309,11 +309,6 @@ public class AgentTracer {
     public void addScopeListener(final ScopeListener listener) {}
 
     @Override
-    public UserDetails addUserDetails(String userId) {
-      return NoopUserDetails.INSTANCE;
-    }
-
-    @Override
     public void registerCheckpointer(Checkpointer checkpointer) {}
 
     @Override

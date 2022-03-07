@@ -4,8 +4,6 @@ import datadog.trace.api.Config;
 import datadog.trace.api.DDTags;
 import datadog.trace.api.GlobalTracer;
 import datadog.trace.api.StatsDClient;
-import datadog.trace.api.interceptor.MutableSpan;
-import datadog.trace.api.interceptor.MutableSpanUserDetails;
 import datadog.trace.api.interceptor.TraceInterceptor;
 import datadog.trace.bootstrap.instrumentation.api.AgentPropagation;
 import datadog.trace.bootstrap.instrumentation.api.AgentSpan;
@@ -434,18 +432,6 @@ public class DDTracer implements Tracer, datadog.trace.api.Tracer {
   @Override
   public void addScopeListener(final ScopeListener listener) {
     tracer.addScopeListener(listener);
-  }
-
-  @Override
-  public UserDetails addUserDetails(String userId) {
-    Span span = activeSpan();
-    if (!(span instanceof MutableSpan)) {
-      return NoopUserDetails.INSTANCE;
-    }
-
-    MutableSpan rootSpan = ((MutableSpan) span).getLocalRootSpan();
-    rootSpan.setTag(UserDetails.ID_TAG, userId);
-    return new MutableSpanUserDetails(rootSpan);
   }
 
   @Override

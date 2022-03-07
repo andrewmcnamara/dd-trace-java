@@ -21,7 +21,6 @@ import datadog.trace.api.config.GeneralConfig;
 import datadog.trace.api.gateway.InstrumentationGateway;
 import datadog.trace.api.gateway.RequestContext;
 import datadog.trace.api.interceptor.MutableSpan;
-import datadog.trace.api.interceptor.MutableSpanUserDetails;
 import datadog.trace.api.interceptor.TraceInterceptor;
 import datadog.trace.api.sampling.PrioritySampling;
 import datadog.trace.api.sampling.SamplingMechanism;
@@ -443,6 +442,7 @@ public class CoreTracer implements AgentTracer.TracerAPI {
       sharedCommunicationObjects = new SharedCommunicationObjects();
     }
     sharedCommunicationObjects.monitoring = monitoring;
+    sharedCommunicationObjects.statsDClient = statsDClient;
     sharedCommunicationObjects.createRemaining(config);
 
     if (writer == null) {
@@ -791,18 +791,6 @@ public class CoreTracer implements AgentTracer.TracerAPI {
     if (scopeManager instanceof ContinuableScopeManager) {
       ((ContinuableScopeManager) scopeManager).addScopeListener(listener);
     }
-  }
-
-  @Override
-  public UserDetails addUserDetails(String userId) {
-    AgentSpan agentSpan = scopeManager.activeSpan();
-    if (agentSpan == null) {
-      return NoopUserDetails.INSTANCE;
-    }
-
-    AgentSpan rootSpan = agentSpan.getLocalRootSpan();
-    rootSpan.setTag(UserDetails.ID_TAG, userId);
-    return new MutableSpanUserDetails(rootSpan);
   }
 
   @Override

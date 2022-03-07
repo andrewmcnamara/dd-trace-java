@@ -65,6 +65,11 @@ public class Timer extends Recording {
     record(System.nanoTime());
   }
 
+  @Override
+  public void addMeasurement(long durationInNanos) {
+    this.histogram.accept(NANOSECONDS.toMicros(durationInNanos));
+  }
+
   private void record(long now) {
     // if it's longer than 30s, we have bigger problems
     histogram.accept(Math.min(NANOSECONDS.toMicros(now - start), THIRTY_SECONDS_AS_MICROS));
