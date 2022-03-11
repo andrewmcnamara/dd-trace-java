@@ -160,6 +160,7 @@ public class CoreTracer implements AgentTracer.TracerAPI {
   private final HttpCodec.Extractor extractor;
 
   private final InstrumentationGateway instrumentationGateway;
+  private final TraceKeepAlive traceKeepAlive;
 
   @Override
   public AgentScope.Continuation capture() {
@@ -349,7 +350,6 @@ public class CoreTracer implements AgentTracer.TracerAPI {
       taggedHeaders(config.getRequestHeaderTags());
       partialFlushMinSpans(config.getPartialFlushMinSpans());
       strictTraceWrites(config.isTraceStrictWritesEnabled());
-
       return this;
     }
 
@@ -501,6 +501,13 @@ public class CoreTracer implements AgentTracer.TracerAPI {
 
     this.instrumentationGateway = instrumentationGateway;
 
+    if (config.isTraceLongRunningEnabled()) {
+      this.traceKeepAlive = new TraceKeepAlive(config.getTraceLongRunningFlushInterval());
+      traceKeepAlive.start();
+    } else {
+      this.traceKeepAlive = null;
+    }
+
     shutdownCallback = new ShutdownHook(this);
     try {
       Runtime.getRuntime().addShutdownHook(shutdownCallback);
@@ -537,6 +544,10 @@ public class CoreTracer implements AgentTracer.TracerAPI {
   public String mapServiceName(String serviceName) {
     String mapped = serviceNameMappings.get(serviceName);
     return null == mapped ? serviceName : mapped;
+  }
+
+  boolean isDisableSamplingMechanismValidation() {
+    return disableSamplingMechanismValidation;
   }
 
   /**
@@ -665,6 +676,10 @@ public class CoreTracer implements AgentTracer.TracerAPI {
 
   public int getPartialFlushMinSpans() {
     return partialFlushMinSpans;
+  }
+
+  public TraceKeepAlive getTraceKeepAlive() {
+    return traceKeepAlive;
   }
 
   @Override
@@ -942,8 +957,10 @@ public class CoreTracer implements AgentTracer.TracerAPI {
       return this;
     }
 
-    private DDSpan buildSpan() {
-      DDSpan span = DDSpan.create(timestampMicro, buildSpanContext(), emitCheckpoints);
+    private DDSpan buildSpan(final DDSpanContext context) {
+      DDSpan span =
+          DDSpan.create(
+              timestampMicro, context == null ? buildSpanContext() : context, emitCheckpoints);
       if (span.isLocalRootSpan()) {
         tracer.onRootSpanStarted(span);
       }
@@ -952,7 +969,11 @@ public class CoreTracer implements AgentTracer.TracerAPI {
 
     @Override
     public AgentSpan start() {
-      return buildSpan();
+      return buildSpan(null);
+    }
+
+    AgentSpan start(DDSpanContext context) {
+      return buildSpan(context);
     }
 
     @Override
@@ -1186,6 +1207,9 @@ public class CoreTracer implements AgentTracer.TracerAPI {
     public void run() {
       final CoreTracer tracer = reference.get();
       if (tracer != null) {
+        if (tracer.traceKeepAlive != null) {
+          tracer.traceKeepAlive.stop();
+        }
         tracer.close();
       }
     }
