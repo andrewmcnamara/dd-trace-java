@@ -546,7 +546,7 @@ public class CoreTracer implements AgentTracer.TracerAPI {
     return null == mapped ? serviceName : mapped;
   }
 
-  boolean isDisableSamplingMechanismValidation() {
+  boolean   isDisableSamplingMechanismValidation() {
     return disableSamplingMechanismValidation;
   }
 
