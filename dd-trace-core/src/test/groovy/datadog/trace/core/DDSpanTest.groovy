@@ -217,7 +217,8 @@ class DDSpanTest extends DDCoreSpecification {
     Math.abs(TimeUnit.NANOSECONDS.toSeconds(span.startTime) - TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis())) < 5
     span.durationNano >= TimeUnit.MILLISECONDS.toNanos(betweenDur)
     span.durationNano <= TimeUnit.MILLISECONDS.toNanos(total)
-    span.durationNano % mod == 0
+    // true span duration can be <1ms if clock was about to tick over, so allow for that
+    (span.durationNano % mod == 0) || (span.durationNano == 1)
   }
 
   def "stopping with a timestamp before start time yields a min duration of 1"() {
@@ -266,9 +267,9 @@ class DDSpanTest extends DDCoreSpecification {
     child.@origin == null // Access field directly instead of getter.
 
     where:
-    extractedContext                                                                                                                         | _
-    new TagContext("some-origin", [:])                                                                                                       | _
-    new ExtractedContext(DDId.ONE, DDId.from(2), PrioritySampling.SAMPLER_DROP, SamplingMechanism.DEFAULT, "some-origin", 0, [:], [:], null) | _
+    extractedContext                                                                                                                | _
+    new TagContext("some-origin", [:])                                                                                              | _
+    new ExtractedContext(DDId.ONE, DDId.from(2), PrioritySampling.SAMPLER_DROP, SamplingMechanism.DEFAULT, "some-origin", 0, [:], [:]) | _
   }
 
   def "isRootSpan() in and not in the context of distributed tracing"() {
@@ -285,9 +286,9 @@ class DDSpanTest extends DDCoreSpecification {
     root.finish()
 
     where:
-    extractedContext                                                                                                                         | isTraceRootSpan
-    null                                                                                                                                     | true
-    new ExtractedContext(DDId.from(123), DDId.from(456), PrioritySampling.SAMPLER_KEEP, SamplingMechanism.DEFAULT, "789", 0, [:], [:], null) | false
+    extractedContext                                                                                                                   | isTraceRootSpan
+    null                                                                                                                               | true
+    new ExtractedContext(DDId.from(123), DDId.from(456), PrioritySampling.SAMPLER_KEEP, SamplingMechanism.DEFAULT, "789", 0, [:], [:]) | false
   }
 
   def "getApplicationRootSpan() in and not in the context of distributed tracing"() {
@@ -307,9 +308,9 @@ class DDSpanTest extends DDCoreSpecification {
     root.finish()
 
     where:
-    extractedContext                                                                                                                         | isTraceRootSpan
-    null                                                                                                                                     | true
-    new ExtractedContext(DDId.from(123), DDId.from(456), PrioritySampling.SAMPLER_KEEP, SamplingMechanism.DEFAULT, "789", 0, [:], [:], null) | false
+    extractedContext                                                                                                                   | isTraceRootSpan
+    null                                                                                                                               | true
+    new ExtractedContext(DDId.from(123), DDId.from(456), PrioritySampling.SAMPLER_KEEP, SamplingMechanism.DEFAULT, "789", 0, [:], [:]) | false
   }
 
   def 'publishing of root span closes the request context data'() {
@@ -356,9 +357,7 @@ class DDSpanTest extends DDCoreSpecification {
       0,
       tracer.pendingTraceFactory.create(DDId.ONE),
       null,
-      false,
-      null,
-      512)
+      false)
     then:
     context.isTopLevel() == expectTopLevel
 
@@ -394,9 +393,7 @@ class DDSpanTest extends DDCoreSpecification {
       0,
       tracer.pendingTraceFactory.create(DDId.ONE),
       null,
-      false,
-      null,
-      512)
+      false)
 
     def span = null
 

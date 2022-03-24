@@ -80,6 +80,7 @@ class PendingTraceBufferTest extends DDSpecification {
     trace.pendingReferenceCount == 1
     1 * bufferSpy.enqueue(trace)
     _ * tracer.getPartialFlushMinSpans() >> 10
+    1 * tracer.getTimeWithNanoTicks(_)
     1 * tracer.onFinish(span)
     0 * _
 
@@ -111,6 +112,7 @@ class PendingTraceBufferTest extends DDSpecification {
     trace.pendingReferenceCount == 1
     1 * bufferSpy.enqueue(trace)
     _ * tracer.getPartialFlushMinSpans() >> 10
+    1 * tracer.getTimeWithNanoTicks(_)
     1 * tracer.onFinish(parent)
     0 * _
 
@@ -123,6 +125,7 @@ class PendingTraceBufferTest extends DDSpecification {
     1 * tracer.write({ it.size() == 2 })
     1 * tracer.writeTimer() >> Monitoring.DISABLED.newTimer("")
     _ * tracer.getPartialFlushMinSpans() >> 10
+    1 * tracer.getTimeWithNanoTicks(_)
     1 * tracer.onFinish(child)
     0 * _
   }
@@ -142,6 +145,7 @@ class PendingTraceBufferTest extends DDSpecification {
     _ * tracer.getPartialFlushMinSpans() >> 10
     _ * tracer.mapServiceName(_)
     _ * tracer.onStart(_)
+    _ * tracer.getTimeWithNanoTicks(_)
     _ * tracer.onFinish(_)
     1 * tracer.writeTimer() >> Monitoring.DISABLED.newTimer("")
     1 * tracer.write(_) >> { List<List<DDSpan>> spans ->
@@ -168,11 +172,13 @@ class PendingTraceBufferTest extends DDSpecification {
     _ * tracer.getPartialFlushMinSpans() >> 10
     _ * tracer.mapServiceName(_)
     _ * tracer.onStart(_)
+    _ * tracer.getTimeWithNanoTicks(_)
     _ * tracer.onFinish(_)
     0 * _
 
     when:
-    addContinuation(newSpanOf(factory.create(DDId.ONE))).finish()
+    def pendingTrace = factory.create(DDId.ONE)
+    addContinuation(newSpanOf(pendingTrace)).finish()
 
     then:
     1 * bufferSpy.enqueue(_)
@@ -181,8 +187,10 @@ class PendingTraceBufferTest extends DDSpecification {
     _ * tracer.getPartialFlushMinSpans() >> 10
     _ * tracer.mapServiceName(_)
     1 * tracer.onStart(_)
+    2 * tracer.getTimeWithNanoTicks(_)
     1 * tracer.onFinish(_)
     0 * _
+    pendingTrace.isEnqueued == 0
   }
 
   def "continuation allows adding after root finished"() {
@@ -205,6 +213,7 @@ class PendingTraceBufferTest extends DDSpecification {
     !trace.rootSpanWritten
     1 * bufferSpy.enqueue(trace)
     _ * tracer.getPartialFlushMinSpans() >> 10
+    1 * tracer.getTimeWithNanoTicks(_)
     1 * tracer.onFinish(parent)
     0 * _
 
@@ -256,6 +265,7 @@ class PendingTraceBufferTest extends DDSpecification {
       parentLatch.countDown()
     }
     _ * tracer.getPartialFlushMinSpans() >> 10
+    1 * tracer.getTimeWithNanoTicks(_)
     1 * tracer.onFinish(parent)
     0 * _
 
@@ -276,6 +286,7 @@ class PendingTraceBufferTest extends DDSpecification {
     }
     _ * tracer.mapServiceName(_)
     1 * tracer.onStart(_)
+    2 * tracer.getTimeWithNanoTicks(_)
     1 * tracer.onFinish(_)
     0 * _
   }
@@ -345,6 +356,7 @@ class PendingTraceBufferTest extends DDSpecification {
     1 * tracer.getPartialFlushMinSpans() >> 10000
     1 * tracer.mapServiceName(_)
     1 * tracer.onStart(_)
+    2 * tracer.getTimeWithNanoTicks(_)
     1 * tracer.onFinish(_)
     0 * _
 
@@ -360,6 +372,7 @@ class PendingTraceBufferTest extends DDSpecification {
     _ * tracer.getPartialFlushMinSpans() >> 10000
     _ * tracer.mapServiceName(_)
     _ * tracer.onStart(_)
+    _ * tracer.getTimeWithNanoTicks(_)
     _ * tracer.onFinish(_)
     0 * _
 
@@ -401,9 +414,7 @@ class PendingTraceBufferTest extends DDSpecification {
       0,
       trace,
       null,
-      false,
-      null,
-      512)
+      false)
     return DDSpan.create(0, context)
   }
 
@@ -426,9 +437,7 @@ class PendingTraceBufferTest extends DDSpecification {
       0,
       trace,
       null,
-      false,
-      null,
-      512)
+      false)
     return DDSpan.create(0, context)
   }
 }

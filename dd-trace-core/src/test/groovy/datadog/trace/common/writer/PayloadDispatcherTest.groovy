@@ -66,7 +66,7 @@ class PayloadDispatcherTest extends DDSpecification {
     }
     dispatcher.flush()
     then:
-    1 * discovery.getTraceEndpoint() >> traceEndpoint
+    2 * discovery.getTraceEndpoint() >> traceEndpoint
     1 * healthMetrics.onSerialize({ it > 0 })
     1 * api.sendSerializedTraces({ it.traceCount() == traceCount }) >> DDAgentApi.Response.success(200)
 
@@ -93,8 +93,8 @@ class PayloadDispatcherTest extends DDSpecification {
     }
     dispatcher.flush()
     then:
+    2 * discovery.getTraceEndpoint() >> traceEndpoint
     1 * healthMetrics.onSerialize({ it > 0 })
-    1 * discovery.getTraceEndpoint() >> traceEndpoint
     1 * api.sendSerializedTraces({ it.traceCount() == traceCount }) >> DDAgentApi.Response.failed(400)
 
     where:
@@ -151,8 +151,7 @@ class PayloadDispatcherTest extends DDSpecification {
     tracer.mapServiceName(_) >> { String serviceName -> serviceName }
     PendingTrace trace = Mock(PendingTrace)
     trace.getTracer() >> tracer
-
-    def context = new DDSpanContext(
+    return new DDSpan(0, new DDSpanContext(
       DDId.from(1),
       DDId.from(1),
       DDId.ZERO,
@@ -169,9 +168,6 @@ class PayloadDispatcherTest extends DDSpecification {
       0,
       trace,
       null,
-      false,
-      null,
-      512)
-    return new DDSpan(0, context)
+      false))
   }
 }

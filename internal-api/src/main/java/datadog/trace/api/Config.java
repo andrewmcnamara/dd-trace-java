@@ -7,12 +7,16 @@ import static datadog.trace.api.ConfigDefaults.DEFAULT_ANALYTICS_SAMPLE_RATE;
 import static datadog.trace.api.ConfigDefaults.DEFAULT_APPSEC_ENABLED;
 import static datadog.trace.api.ConfigDefaults.DEFAULT_APPSEC_REPORTING_INBAND;
 import static datadog.trace.api.ConfigDefaults.DEFAULT_APPSEC_TRACE_RATE_LIMIT;
+import static datadog.trace.api.ConfigDefaults.DEFAULT_APPSEC_WAF_METRICS;
 import static datadog.trace.api.ConfigDefaults.DEFAULT_CIVISIBILITY_ENABLED;
+import static datadog.trace.api.ConfigDefaults.DEFAULT_CLOCK_SYNC_PERIOD;
 import static datadog.trace.api.ConfigDefaults.DEFAULT_CWS_ENABLED;
 import static datadog.trace.api.ConfigDefaults.DEFAULT_CWS_TLS_REFRESH;
 import static datadog.trace.api.ConfigDefaults.DEFAULT_DB_CLIENT_HOST_SPLIT_BY_INSTANCE;
 import static datadog.trace.api.ConfigDefaults.DEFAULT_DB_CLIENT_HOST_SPLIT_BY_INSTANCE_TYPE_SUFFIX;
 import static datadog.trace.api.ConfigDefaults.DEFAULT_DOGSTATSD_START_DELAY;
+import static datadog.trace.api.ConfigDefaults.DEFAULT_GRPC_CLIENT_ERROR_STATUSES;
+import static datadog.trace.api.ConfigDefaults.DEFAULT_GRPC_SERVER_ERROR_STATUSES;
 import static datadog.trace.api.ConfigDefaults.DEFAULT_HEALTH_METRICS_ENABLED;
 import static datadog.trace.api.ConfigDefaults.DEFAULT_HTTP_CLIENT_ERROR_STATUSES;
 import static datadog.trace.api.ConfigDefaults.DEFAULT_HTTP_CLIENT_SPLIT_BY_DOMAIN;
@@ -64,6 +68,7 @@ import static datadog.trace.api.config.AppSecConfig.APPSEC_REPORTING_INBAND;
 import static datadog.trace.api.config.AppSecConfig.APPSEC_REPORT_TIMEOUT_SEC;
 import static datadog.trace.api.config.AppSecConfig.APPSEC_RULES_FILE;
 import static datadog.trace.api.config.AppSecConfig.APPSEC_TRACE_RATE_LIMIT;
+import static datadog.trace.api.config.AppSecConfig.APPSEC_WAF_METRICS;
 import static datadog.trace.api.config.CiVisibilityConfig.CIVISIBILITY_ENABLED;
 import static datadog.trace.api.config.CwsConfig.CWS_ENABLED;
 import static datadog.trace.api.config.CwsConfig.CWS_TLS_REFRESH;
@@ -149,8 +154,10 @@ import static datadog.trace.api.config.ProfilingConfig.PROFILING_UPLOAD_TIMEOUT_
 import static datadog.trace.api.config.ProfilingConfig.PROFILING_URL;
 import static datadog.trace.api.config.TraceInstrumentationConfig.DB_CLIENT_HOST_SPLIT_BY_INSTANCE;
 import static datadog.trace.api.config.TraceInstrumentationConfig.DB_CLIENT_HOST_SPLIT_BY_INSTANCE_TYPE_SUFFIX;
+import static datadog.trace.api.config.TraceInstrumentationConfig.GRPC_CLIENT_ERROR_STATUSES;
 import static datadog.trace.api.config.TraceInstrumentationConfig.GRPC_IGNORED_INBOUND_METHODS;
 import static datadog.trace.api.config.TraceInstrumentationConfig.GRPC_IGNORED_OUTBOUND_METHODS;
+import static datadog.trace.api.config.TraceInstrumentationConfig.GRPC_SERVER_ERROR_STATUSES;
 import static datadog.trace.api.config.TraceInstrumentationConfig.GRPC_SERVER_TRIM_PACKAGE_RESOURCE;
 import static datadog.trace.api.config.TraceInstrumentationConfig.HTTP_CLIENT_HOST_SPLIT_BY_DOMAIN;
 import static datadog.trace.api.config.TraceInstrumentationConfig.HTTP_CLIENT_TAG_QUERY_STRING;
@@ -193,6 +200,7 @@ import static datadog.trace.api.config.TracerConfig.AGENT_NAMED_PIPE;
 import static datadog.trace.api.config.TracerConfig.AGENT_PORT_LEGACY;
 import static datadog.trace.api.config.TracerConfig.AGENT_TIMEOUT;
 import static datadog.trace.api.config.TracerConfig.AGENT_UNIX_DOMAIN_SOCKET;
+import static datadog.trace.api.config.TracerConfig.CLOCK_SYNC_PERIOD;
 import static datadog.trace.api.config.TracerConfig.ENABLE_TRACE_AGENT_V05;
 import static datadog.trace.api.config.TracerConfig.HEADER_TAGS;
 import static datadog.trace.api.config.TracerConfig.HTTP_CLIENT_ERROR_STATUSES;
@@ -205,6 +213,8 @@ import static datadog.trace.api.config.TracerConfig.PROPAGATION_EXTRACT_LOG_HEAD
 import static datadog.trace.api.config.TracerConfig.PROPAGATION_STYLE_EXTRACT;
 import static datadog.trace.api.config.TracerConfig.PROPAGATION_STYLE_INJECT;
 import static datadog.trace.api.config.TracerConfig.PROXY_NO_PROXY;
+import static datadog.trace.api.config.TracerConfig.REQUEST_HEADER_TAGS;
+import static datadog.trace.api.config.TracerConfig.RESPONSE_HEADER_TAGS;
 import static datadog.trace.api.config.TracerConfig.SCOPE_DEPTH_LIMIT;
 import static datadog.trace.api.config.TracerConfig.SCOPE_INHERIT_ASYNC_PROPAGATION;
 import static datadog.trace.api.config.TracerConfig.SCOPE_ITERATION_KEEP_ALIVE;
@@ -320,7 +330,8 @@ public class Config {
   private final Map<String, String> spanTags;
   private final Map<String, String> jmxTags;
   private final List<String> excludedClasses;
-  private final Map<String, String> headerTags;
+  private final Map<String, String> requestHeaderTags;
+  private final Map<String, String> responseHeaderTags;
   private final BitSet httpServerErrorStatuses;
   private final BitSet httpClientErrorStatuses;
   private final boolean httpServerTagQueryString;
@@ -344,6 +355,7 @@ public class Config {
   private final boolean logExtractHeaderNames;
   private final Set<PropagationStyle> propagationStylesToExtract;
   private final Set<PropagationStyle> propagationStylesToInject;
+  private final int clockSyncPeriod;
 
   private final String dogStatsDNamedPipe;
   private final int dogStatsDStartDelay;
@@ -418,6 +430,7 @@ public class Config {
   private final int appSecReportMaxTimeout;
   private final String appSecIpAddrHeader;
   private final int appSecTraceRateLimit;
+  private final boolean appSecWafMetrics;
 
   private final boolean ciVisibilityEnabled;
 
@@ -470,6 +483,8 @@ public class Config {
   private final Set<String> grpcIgnoredInboundMethods;
   private final Set<String> grpcIgnoredOutboundMethods;
   private final boolean grpcServerTrimPackageResource;
+  private final BitSet grpcServerErrorStatuses;
+  private final BitSet grpcClientErrorStatuses;
 
   private final boolean cwsEnabled;
   private final int cwsTlsRefresh;
@@ -634,7 +649,24 @@ public class Config {
     jmxTags = configProvider.getMergedMap(JMX_TAGS);
 
     excludedClasses = tryMakeImmutableList(configProvider.getList(TRACE_CLASSES_EXCLUDE));
-    headerTags = configProvider.getMergedMap(HEADER_TAGS);
+
+    if (isEnabled(false, HEADER_TAGS, ".legacy.parsing.enabled")) {
+      requestHeaderTags = configProvider.getMergedMap(HEADER_TAGS);
+      responseHeaderTags = Collections.emptyMap();
+      if (configProvider.isSet(REQUEST_HEADER_TAGS)) {
+        logIngoredSettingWarning(REQUEST_HEADER_TAGS, HEADER_TAGS, ".legacy.parsing.enabled");
+      }
+      if (configProvider.isSet(RESPONSE_HEADER_TAGS)) {
+        logIngoredSettingWarning(RESPONSE_HEADER_TAGS, HEADER_TAGS, ".legacy.parsing.enabled");
+      }
+    } else {
+      requestHeaderTags =
+          configProvider.getMergedMapWithOptionalMappings(
+              "http.request.headers.", true, HEADER_TAGS, REQUEST_HEADER_TAGS);
+      responseHeaderTags =
+          configProvider.getMergedMapWithOptionalMappings(
+              "http.response.headers.", true, HEADER_TAGS, RESPONSE_HEADER_TAGS);
+    }
 
     httpServerPathResourceNameMapping =
         configProvider.getOrderedMap(TRACE_HTTP_SERVER_PATH_RESOURCE_NAME_MAPPING);
@@ -710,6 +742,8 @@ public class Config {
     propagationStylesToInject =
         getPropagationStyleSetSettingFromEnvironmentOrDefault(
             PROPAGATION_STYLE_INJECT, DEFAULT_PROPAGATION_STYLE_INJECT);
+
+    clockSyncPeriod = configProvider.getInteger(CLOCK_SYNC_PERIOD, DEFAULT_CLOCK_SYNC_PERIOD);
 
     dogStatsDNamedPipe = configProvider.getString(DOGSTATSD_NAMED_PIPE);
 
@@ -887,6 +921,8 @@ public class Config {
     appSecTraceRateLimit =
         configProvider.getInteger(APPSEC_TRACE_RATE_LIMIT, DEFAULT_APPSEC_TRACE_RATE_LIMIT);
 
+    appSecWafMetrics = configProvider.getBoolean(APPSEC_WAF_METRICS, DEFAULT_APPSEC_WAF_METRICS);
+
     ciVisibilityEnabled =
         configProvider.getBoolean(CIVISIBILITY_ENABLED, DEFAULT_CIVISIBILITY_ENABLED);
 
@@ -925,6 +961,12 @@ public class Config {
         tryMakeImmutableSet(configProvider.getList(GRPC_IGNORED_OUTBOUND_METHODS));
     grpcServerTrimPackageResource =
         configProvider.getBoolean(GRPC_SERVER_TRIM_PACKAGE_RESOURCE, false);
+    grpcServerErrorStatuses =
+        configProvider.getIntegerRange(
+            GRPC_SERVER_ERROR_STATUSES, DEFAULT_GRPC_SERVER_ERROR_STATUSES);
+    grpcClientErrorStatuses =
+        configProvider.getIntegerRange(
+            GRPC_CLIENT_ERROR_STATUSES, DEFAULT_GRPC_CLIENT_ERROR_STATUSES);
 
     hystrixTagsEnabled = configProvider.getBoolean(HYSTRIX_TAGS_ENABLED, false);
     hystrixMeasuredEnabled = configProvider.getBoolean(HYSTRIX_MEASURED_ENABLED, false);
@@ -1075,8 +1117,12 @@ public class Config {
     return excludedClasses;
   }
 
-  public Map<String, String> getHeaderTags() {
-    return headerTags;
+  public Map<String, String> getRequestHeaderTags() {
+    return requestHeaderTags;
+  }
+
+  public Map<String, String> getResponseHeaderTags() {
+    return responseHeaderTags;
   }
 
   public Map<String, String> getHttpServerPathResourceNameMapping() {
@@ -1169,6 +1215,10 @@ public class Config {
 
   public Set<PropagationStyle> getPropagationStylesToInject() {
     return propagationStylesToInject;
+  }
+
+  public int getClockSyncPeriod() {
+    return clockSyncPeriod;
   }
 
   public String getDogStatsDNamedPipe() {
@@ -1403,6 +1453,10 @@ public class Config {
     return appSecTraceRateLimit;
   }
 
+  public boolean isAppSecWafMetrics() {
+    return appSecWafMetrics;
+  }
+
   public boolean isCiVisibilityEnabled() {
     return ciVisibilityEnabled;
   }
@@ -1557,6 +1611,14 @@ public class Config {
 
   public boolean isGrpcServerTrimPackageResource() {
     return grpcServerTrimPackageResource;
+  }
+
+  public BitSet getGrpcServerErrorStatuses() {
+    return grpcServerErrorStatuses;
+  }
+
+  public BitSet getGrpcClientErrorStatuses() {
+    return grpcClientErrorStatuses;
   }
 
   /** @return A map of tags to be applied only to the local application root span. */
@@ -1855,6 +1917,20 @@ public class Config {
         Arrays.asList(integrationNames), "", ".legacy.tracing.enabled", defaultEnabled);
   }
 
+  public boolean isEnabled(
+      final boolean defaultEnabled, final String settingName, String settingSuffix) {
+    return isEnabled(Collections.singletonList(settingName), "", settingSuffix, defaultEnabled);
+  }
+
+  private void logIngoredSettingWarning(
+      String setting, String overridingSetting, String overridingSuffix) {
+    log.warn(
+        "Setting {} ignored since {}{} is enabled.",
+        propertyNameToSystemPropertyName(setting),
+        propertyNameToSystemPropertyName(overridingSetting),
+        overridingSuffix);
+  }
+
   public boolean isTraceAnalyticsIntegrationEnabled(
       final SortedSet<String> integrationNames, final boolean defaultEnabled) {
     return isEnabled(integrationNames, "", ".analytics.enabled", defaultEnabled);
@@ -1867,14 +1943,6 @@ public class Config {
 
   public boolean isSamplingMechanismValidationDisabled() {
     return configProvider.getBoolean(TracerConfig.SAMPLING_MECHANISM_VALIDATION_DISABLED, false);
-  }
-
-  public boolean isDatadogTagPropagationEnabled() {
-    return configProvider.getBoolean(TracerConfig.DATADOG_TAGS_ENABLED, false);
-  }
-
-  public int getDatadogTagsLimit() {
-    return configProvider.getInteger(TracerConfig.DATADOG_TAGS_LIMIT, 512);
   }
 
   public <T extends Enum<T>> T getEnumValue(
@@ -1920,8 +1988,8 @@ public class Config {
     boolean anyEnabled = defaultEnabled;
     for (final String name : integrationNames) {
       final String configKey = settingPrefix + name + settingSuffix;
-      final boolean configEnabled =
-          configProvider.getBoolean("trace." + configKey, defaultEnabled, configKey);
+      final String fullKey = configKey.startsWith("trace.") ? configKey : "trace." + configKey;
+      final boolean configEnabled = configProvider.getBoolean(fullKey, defaultEnabled, configKey);
       if (defaultEnabled) {
         anyEnabled &= configEnabled;
       } else {
@@ -2158,8 +2226,10 @@ public class Config {
         + jmxTags
         + ", excludedClasses="
         + excludedClasses
-        + ", headerTags="
-        + headerTags
+        + ", requestHeaderTags="
+        + requestHeaderTags
+        + ", responseHeaderTags="
+        + responseHeaderTags
         + ", httpServerErrorStatuses="
         + httpServerErrorStatuses
         + ", httpClientErrorStatuses="
@@ -2204,6 +2274,8 @@ public class Config {
         + propagationStylesToExtract
         + ", propagationStylesToInject="
         + propagationStylesToInject
+        + ", clockSyncPeriod="
+        + clockSyncPeriod
         + ", jmxFetchEnabled="
         + jmxFetchEnabled
         + ", dogStatsDStartDelay="
@@ -2371,6 +2443,10 @@ public class Config {
         + grpcIgnoredInboundMethods
         + ", grpcIgnoredOutboundMethods="
         + grpcIgnoredOutboundMethods
+        + ", grpcServerErrorStatuses="
+        + grpcServerErrorStatuses
+        + ", grpcClientErrorStatuses="
+        + grpcClientErrorStatuses
         + ", configProvider="
         + configProvider
         + ", appSecEnabled="
