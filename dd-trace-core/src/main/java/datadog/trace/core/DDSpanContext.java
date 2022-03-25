@@ -167,7 +167,7 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
     // The +1 is the magic number from the tags below that we set at the end,
     // and "* 4 / 3" is to make sure that we don't resize immediately
     final int capacity = Math.max((tagsSize <= 0 ? 3 : (tagsSize + 1)) * 4 / 3, 8);
-    this.unsafeTags = new HashMap<>(capacity);
+    unsafeTags = new HashMap<>(capacity);
 
     setServiceName(serviceName);
     this.operationName = operationName;
@@ -183,8 +183,8 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
 
     // Additional Metadata
     final Thread current = Thread.currentThread();
-    this.threadId = current.getId();
-    this.threadName = THREAD_NAMES.computeIfAbsent(current.getName(), Functions.UTF8_ENCODE);
+    threadId = current.getId();
+    threadName = THREAD_NAMES.computeIfAbsent(current.getName(), Functions.UTF8_ENCODE);
 
     this.disableSamplingMechanismValidation = disableSamplingMechanismValidation;
   }
@@ -209,7 +209,7 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
 
   public void setServiceName(final String serviceName) {
     this.serviceName = trace.getTracer().mapServiceName(serviceName);
-    this.topLevel = isTopLevel(parentServiceName, this.serviceName);
+    topLevel = isTopLevel(parentServiceName, this.serviceName);
   }
 
   // TODO this logic is inconsistent with hasResourceName
@@ -226,8 +226,8 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
   }
 
   public void setResourceName(final CharSequence resourceName, byte priority) {
-    if (priority >= this.resourceNamePriority) {
-      this.resourceNamePriority = priority;
+    if (priority >= resourceNamePriority) {
+      resourceNamePriority = priority;
       this.resourceName = resourceName;
     }
   }
@@ -434,7 +434,7 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
   }
 
   public void setHttpStatusCode(short statusCode) {
-    this.httpStatusCode = statusCode;
+    httpStatusCode = statusCode;
   }
 
   public short getHttpStatusCode() {
@@ -504,7 +504,8 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
         }
       } else {
         for (int i = 0; i < log.changeOffset; i += 2) {
-          if (!tagInterceptor.interceptTag(this, (String) log.changes[i], log.changes[i + 1])) {
+          if (log.changes[i] != null
+              && !tagInterceptor.interceptTag(this, (String) log.changes[i], log.changes[i + 1])) {
             unsafeSetTag((String) log.changes[i], log.changes[i + 1]);
           }
         }
@@ -626,7 +627,7 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
 
   @Override
   public void setTagCurrent(String key, Object value) {
-    this.setTag(key, value);
+    setTag(key, value);
   }
 
   @Override
@@ -638,7 +639,7 @@ public class DDSpanContext implements AgentSpan.Context, RequestContext<Object>,
   public void setDataCurrent(String key, Object value) {
     // TODO is this decided?
     String tagKey = "_dd." + key + ".json";
-    this.setTag(tagKey, value);
+    setTag(tagKey, value);
   }
 
   private DDSpanContext getTopContext() {

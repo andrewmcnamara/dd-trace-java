@@ -103,7 +103,16 @@ public final class TagLog {
   }
 
   public final boolean isEmpty() {
-    return (changeOffset != 0);
+    // Todo: Make better
+    if (changes.length == 0) {
+      return true;
+    }
+    for (Object change : changes) {
+      if (change != null) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public final int size() {
